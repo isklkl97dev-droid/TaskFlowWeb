@@ -64,7 +64,7 @@
         }
 
         try {
-            const response = await fetch("http://192.168.19.132:8080/api/auth/register", config);
+            const response = await fetch("/api/auth/register", config);
 
             if (response.ok) {
                 window.location.href = "login.html";
