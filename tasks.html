@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>업무 목록</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="style/style.css" rel="stylesheet">
+    <link href="style/tasksstyle.css" rel="stylesheet">
+
+</head>
+<body>
+<div class="container">
+    <div class="list-section">
+        <h2><i class="fas fa-clipboard-list"></i> 업무 목록</h2>
+        <div class="feature-highlight">
+            <i class="fas fa-database"></i>
+            <span>실시간 Task 관리</span>
+        </div>
+        <div id="task-container" class="task-container">
+            <ul id="task-list" class="task-list"></ul>
+        </div>
+    </div>
+</div>
+
+<button id="open-modal" class="floating-add-btn">
+    <i class="fas fa-plus"></i>
+</button>
+
+<div id="task-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h3 style="text-align:center; margin-bottom:15px;">새 업무 추가</h3>
+        <form id="task-form">
+            <label for="title"></label><input type="text" id="title" placeholder="제목" required>
+            <label for="content"></label><textarea id="content" placeholder="내용" rows="3" required></textarea>
+            <label for="startDate"></label><input type="date" id="startDate" required>
+            <label for="dueDate"></label><input type="date" id="dueDate" required>
+            <button type="submit">추가하기</button>
+        </form>
+    </div>
+</div>
+
+<script>
+
+    async function loadTasks() {
+        const list = document.getElementById("task-list");
+        list.innerHTML = "<p>불러오는 중...</p>";
+        try {
+            const res = await fetch("/api/task");
+            const tasks = await res.json();
+            if (tasks.length > 0) {
+                list.innerHTML = tasks.map(task => `
+                    <li class="task-item">
+                        <div class="task-title">${task.title}</div>
+                        <div class="task-dates">${task.startDate} ~ ${task.dueDate}</div>
+                        <div class="task-desc">${task.content}</div>
+                        <div class="task-buttons">
+                        <button class="task-btn edit-btn" onclick="editTask(${task.id})">수정</button>
+                        <button class="task-btn delete-btn" onclick="deleteTask(${task.id})">삭제</button>
+                        </div>
+                        </li>`).join('');
+            } else {
+                list.innerHTML = "<p>등록된 업무가 없습니다.</p>";
+            }
+        } catch {
+            list.innerHTML = "<p>불러오는 중 오류 발생</p>";
+        }
+    }
+
+    // 팝업
+    const modal = document.getElementById("task-modal");
+    const openBtn = document.getElementById("open-modal");
+    const closeBtn = document.querySelector(".close-btn");
+
+    openBtn.addEventListener("click", () => modal.style.display = "flex");
+    closeBtn.addEventListener("click", () => modal.style.display = "none");
+    window.addEventListener("click", e => { if (e.target === modal) modal.style.display = "none"; });
+
+    // 추가
+    document.getElementById("task-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const title = document.getElementById("title").value;
+        const content = document.getElementById("content").value;
+        const startDate = document.getElementById("startDate").value;
+        const dueDate = document.getElementById("dueDate").value;
+
+        const config = {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, content, startDate, dueDate })
+        }
+
+        try {
+            const res = await fetch("/api/task", config);
+            if (res.ok) {
+                e.target.reset();
+                modal.style.display = "none";
+                await loadTasks();
+            } else {
+                alert("추가 실패");
+            }
+        } catch {
+            alert("서버 오류 발생");
+        }
+    });
+
+    // 수정
+    async function editTask(id) {
+        const title = prompt("새 제목:");
+        const content = prompt("새 내용:");
+        const startDate = prompt("새 시작일 (YYYY-MM-DD):");
+        const dueDate = prompt("새 종료일 (YYYY-MM-DD):");
+        if (!title || !content || !startDate || !dueDate) return;
+
+        const config = {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, content, startDate, dueDate })
+        }
+
+        try {
+            const res = await fetch("/api/task/" + id, config);
+            if (res.ok) {
+                await loadTasks();
+            }
+            else {
+                alert("수정 실패");
+            }
+        } catch {
+            alert("서버 오류 발생");
+        }
+    }
+
+    // 삭제
+    async function deleteTask(id) {
+        if (!confirm("삭제하시겠습니까?")) return;
+
+        const config = {
+            method: "DELETE"
+        }
+
+        try {
+            const res = await fetch("/api/task/" + id, config);
+            if (res.ok) {
+                await loadTasks();
+            }
+            else {
+                alert("삭제 실패");
+            }
+        } catch {
+            alert("서버 오류 발생");
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", loadTasks);
+</script>
+</body>
+</html>
